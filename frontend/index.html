@@ -25,6 +25,10 @@
       <span class="inline-block animate-pulse">🤖 에이전트가 분석 중… (검색 → 일정 확인 → 점수 계산 → 추천 이유 작성)</span>
     </div>
 
+    <!-- 에이전트 분석 과정 -->
+    <div id="intentCard" class="hidden bg-white rounded-xl shadow-sm p-5 mb-4 border-l-4 border-indigo-400"></div>
+    <div id="logCard" class="hidden bg-slate-800 text-slate-100 rounded-xl shadow-sm p-5 mb-4 font-mono text-xs"></div>
+
     <div id="results" class="space-y-4"></div>
   </div>
 
@@ -48,6 +52,34 @@
         });
         const data = await res.json();
         document.getElementById('status').classList.add('hidden');
+
+        // ── 에이전트 분석 과정: 의도 추출 결과 ──
+        const SCHED = { 'sat-am': '토 오전', 'sat-pm': '토 오후', 'sun-am': '일 오전', 'sun-pm': '일 오후', weekday: '평일' };
+        const it = data.intent || {};
+        const skillTags = (it.neededSkills || []).map(s => `<span class="bg-indigo-100 text-indigo-700 text-xs px-2 py-0.5 rounded">${s}</span>`).join(' ') || '<span class="text-slate-400 text-xs">없음</span>';
+        const prefTags = (it.preferred || []).map(s => `<span class="bg-emerald-100 text-emerald-700 text-xs px-2 py-0.5 rounded">${SCHED[s] || s}</span>`).join(' ') || '<span class="text-slate-400 text-xs">상관없음</span>';
+        const ic = document.getElementById('intentCard');
+        ic.classList.remove('hidden');
+        ic.innerHTML = `
+          <div class="text-xs font-bold text-indigo-500 uppercase tracking-wider mb-2">🧠 1단계 · 의도 추출</div>
+          <p class="text-sm text-slate-600 mb-3">자연어 요청을 AI가 <b>구조화된 매칭 조건</b>으로 바꿨습니다.</p>
+          <div class="space-y-2">
+            <div class="flex gap-2 items-center"><span class="w-20 text-xs text-slate-500">필요 전문분야</span><div class="flex flex-wrap gap-1">${skillTags}</div></div>
+            <div class="flex gap-2 items-center"><span class="w-20 text-xs text-slate-500">선호 일정</span><div class="flex flex-wrap gap-1">${prefTags}</div></div>
+            <div class="flex gap-2 items-center"><span class="w-20 text-xs text-slate-500">소통 스타일</span><span class="text-xs text-slate-700 font-semibold">${it.style || 'any'}</span></div>
+          </div>`;
+
+        // ── 에이전트 분석 과정: 단계별 추론 로그 ──
+        const lc = document.getElementById('logCard');
+        lc.classList.remove('hidden');
+        const steps = (data.log || []).map(l => {
+          if (l.step === '의도추출') return `<div>① <span class="text-emerald-300">의도추출</span> → 조건 구조화 완료</div>`;
+          if (l.step === 'searchCandidates') return `<div>② <span class="text-emerald-300">searchCandidates</span> → 전문분야 일치 후보 <b>${l.found}명</b> 검색</div>`;
+          if (l.step === 'scoreMatch') return `<div>③ <span class="text-emerald-300">scoreMatch</span> → 가중치 점수 계산, 상위 점수 [${(l.top || []).join(', ')}]</div>`;
+          return `<div>· ${l.step}</div>`;
+        }).join('');
+        lc.innerHTML = `<div class="text-emerald-400 font-bold mb-2">🤖 에이전트 추론 과정 (도구 호출 로그)</div>${steps}<div>④ <span class="text-emerald-300">추천 이유 생성</span> → 점수 근거로 상위 3명 설명 작성</div>`;
+
         const box = document.getElementById('results');
         (data.matches || []).forEach((m, i) => {
           const tags = (m.expertise || []).map(t => `<span class="bg-indigo-50 text-indigo-700 text-xs px-2 py-0.5 rounded">${t}</span>`).join(' ');

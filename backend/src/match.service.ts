@@ -14,8 +14,18 @@ export class MatchService {
     // ① Gemini로 요청 의도 추출
     const intent = await geminiJson<{ neededSkills: string[]; preferred: string[]; style: string }>(
       `다음 요청에서 매칭 조건을 뽑아 JSON으로만 답해줘.
+preferred에는 오직 이 값들만 사용한다: "sat-am","sat-pm","sun-am","sun-pm","weekday". ("any" 같은 다른 값 금지)
+요일/시간 변환 규칙:
+- "토요일"→["sat-am","sat-pm"], "일요일"→["sun-am","sun-pm"], "주말"→["sat-am","sat-pm","sun-am","sun-pm"], "평일"→["weekday"]
+- "오전"이 함께 있으면 -am만, "오후"가 함께 있으면 -pm만 남긴다.
+- 일정 언급이 없으면 preferred는 [].
+예시:
+요청 "토요일 오전 Nest.js 멘토" → {"neededSkills":["Nest.js"],"preferred":["sat-am"],"style":"any"}
+요청 "주말에 친근한 React 멘토" → {"neededSkills":["React"],"preferred":["sat-am","sat-pm","sun-am","sun-pm"],"style":"casual"}
+요청 "평일에 가능한 AI 멘토" → {"neededSkills":["AI"],"preferred":["weekday"],"style":"any"}
+
 요청: "${query}"
-형식: {"neededSkills":["전문분야 영문/한글 태그"],"preferred":["sat-am","sat-pm","sun-am","sun-pm","weekday" 중 해당"],"style":"formal|casual|any"}`,
+형식: {"neededSkills":[...],"preferred":[...],"style":"formal|casual|any"}`,
     ).catch(() => ({ neededSkills: [], preferred: [], style: 'any' }));
     log.push({ step: '의도추출', intent });
 
