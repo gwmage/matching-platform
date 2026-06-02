@@ -1,0 +1,21 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 전문가/멘토 프로필 (매칭 후보)
+// 로컬 실행 편의를 위해 SQLite 사용. 태그/일정은 콤마로 구분된 문자열로 저장한다.
+model Profile {
+  id        Int      @id @default(autoincrement())
+  name      String
+  expertise String // 전문 분야 태그 (콤마 구분, 예: "Nest.js,backend")
+  available String // 가능 일정 (콤마 구분, 예: "sat-am,sun-pm")
+  rating    Float    @default(4.0) // 누적 만족도(0~5)
+  styleTag  String   @default("any") // 소통 스타일: formal | casual | any
+  bio       String // 자연어 자기소개
+  createdAt DateTime @default(now())
+}
