@@ -65,6 +65,44 @@ preferred에는 오직 이 값들만 사용한다: "sat-am","sat-pm","sun-am","s
         reason,
       });
     }
+    // 운영 통계용 로그: 요청 1건 = 의도추출 1회 + 추천이유 N회 Gemini 호출(대략 비용)
+    const costUsd = +(((1 + results.length) * 0.0002)).toFixed(4);
+    await this.prisma.matchRequest.create({
+      data: { query, results: results.length, topScore: results[0]?.score ?? 0, costUsd },
+    }).catch(() => {});
+
     return { query, intent, matches: results, log };
+  }
+
+  // 만족도 피드백 저장
+  async saveFeedback(score: number) {
+    return this.prisma.feedback.create({ data: { score: Math.max(1, Math.min(5, Math.round(score))) } });
+  }
+
+  // 운영 통계: 요청 수·성공률(1위 60점 이상)·AI 비용·불만족 건수
+  async stats() {
+    const reqs = await this.prisma.matchRequest.findMany();
+    const fbs = await this.prisma.feedback.findMany();
+    const n = reqs.length || 1;
+    const success = reqs.filter((r) => r.topScore >= 60).length;
+    const cost = reqs.reduce((a, r) => a + r.costUsd, 0);
+    // 날짜별 요청 수
+    const byDay: Record<string, number> = {};
+    for (const r of reqs) {
+      const d = r.createdAt.toISOString().slice(5, 10);
+      byDay[d] = (byDay[d] || 0) + 1;
+    }
+    const dissatisfied = fbs.filter((f) => f.score <= 2).length;
+    const avgScore = fbs.length ? +(fbs.reduce((a, f) => a + f.score, 0) / fbs.length).toFixed(1) : 0;
+    return {
+      totalRequests: reqs.length,
+      successRate: Math.round((success / n) * 100),
+      estCostUsd: +cost.toFixed(4),
+      estCostKrw: Math.round(cost * 1400),
+      feedbackCount: fbs.length,
+      avgScore,
+      dissatisfied,
+      byDay: Object.entries(byDay).map(([day, count]) => ({ day, count })),
+    };
   }
 }

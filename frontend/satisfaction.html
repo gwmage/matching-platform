@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>매칭 만족도</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style> body { font-family: 'Malgun Gothic', system-ui, sans-serif; } </style>
+</head>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-6">
+  <div class="bg-white rounded-2xl shadow-sm p-8 max-w-md w-full text-center">
+    <div class="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-2">매칭 후 피드백</div>
+    <h1 class="text-xl font-bold text-slate-800 mb-1">연결은 만족스러우셨나요?</h1>
+    <p class="text-slate-500 text-sm mb-6">'김OO 전문가'와의 매칭을 평가해 주세요. 평가는 다음 매칭의 가중치를 개선하는 데 쓰입니다.</p>
+    <div id="stars" class="flex justify-center gap-2 mb-6 text-4xl"></div>
+    <div id="msg" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-4 py-3 text-sm font-semibold mb-4"></div>
+    <button id="send" class="w-full bg-indigo-600 text-white rounded-xl py-3 font-bold hover:bg-indigo-700 disabled:opacity-40" disabled>평가 보내기</button>
+  </div>
+  <script>
+    const API = 'http://localhost:3002/api';
+    let score = 0;
+    const box = document.getElementById('stars');
+    [1,2,3,4,5].forEach(n => {
+      const b = document.createElement('button');
+      b.textContent = '★'; b.className = 'text-slate-300 transition-transform hover:scale-110';
+      b.onclick = () => { score = n; paint(); document.getElementById('send').disabled = false; };
+      box.appendChild(b);
+    });
+    function paint(){ [...box.children].forEach((b,i)=> b.className = (i<score?'text-amber-400':'text-slate-300')+' transition-transform hover:scale-110'); }
+    score = 5; paint(); document.getElementById('send').disabled = false; // 미리보기용 기본 5점
+    document.getElementById('send').onclick = async () => {
+      await fetch(`${API}/match/feedback`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ score }) }).catch(()=>{});
+      const m = document.getElementById('msg'); m.classList.remove('hidden');
+      m.textContent = `✅ ${score}점 평가 감사합니다! 더 나은 매칭에 반영하겠습니다.`;
+    };
+  </script>
+</body>
+</html>
